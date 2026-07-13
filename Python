@@ -1,0 +1,150 @@
+import sqlite3
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# 1. Database Connection
+# Ensure your database file is in the same directory as this script
+conn = sqlite3.connect('logistics_analysis.db')
+
+# Create tables and insert sample data if they don't exist
+# This is to ensure the SQL query has tables to work with.
+cursor = conn.cursor()
+
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS Shipments (
+    ShipmentID INTEGER PRIMARY KEY,
+    RouteID TEXT
+);
+''')
+
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS ColdChainLogs (
+    LogID INTEGER PRIMARY KEY AUTOINCREMENT,
+    ShipmentID INTEGER,
+    Temperature REAL,
+    FOREIGN KEY (ShipmentID) REFERENCES Shipments(ShipmentID)
+);
+''')
+
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS Inventory_Status (
+    StatusID INTEGER PRIMARY KEY AUTOINCREMENT,
+    ShipmentID INTEGER,
+    Status TEXT,
+    FOREIGN KEY (ShipmentID) REFERENCES Shipments(ShipmentID)
+);
+''')
+
+# Sample data insertion (only if tables are empty)
+# Check if Shipments table is empty before inserting
+cursor.execute('SELECT COUNT(*) FROM Shipments')
+if cursor.fetchone()[0] == 0:
+    shipments_data = [
+        (1, 'A'),
+        (2, 'B'),
+        (3, 'A'),
+        (4, 'C')
+    ]
+    cursor.executemany('INSERT INTO Shipments (ShipmentID, RouteID) VALUES (?, ?)', shipments_data)
+
+    coldchain_data = [
+        (1, 5.2),
+        (1, 6.1),
+        (2, 9.8),
+        (2, 10.5),
+        (3, 4.5),
+        (3, 5.0),
+        (4, 7.0),
+        (4, 7.5)
+    ]
+    cursor.executemany('INSERT INTO ColdChainLogs (ShipmentID, Temperature) VALUES (?, ?)', coldchain_data)
+
+    inventory_data = [
+        (1, 'OK'),
+        (1, 'OK'),
+        (2, 'Riskli'),
+        (2, 'Riskli'),
+        (3, 'OK'),
+        (3, 'OK'),
+        (4, 'OK'),
+        (4, 'OK')
+    ]
+    cursor.executemany('INSERT INTO Inventory_Status (ShipmentID, Status) VALUES (?, ?)', inventory_data)
+
+    conn.commit()
+
+# 2. Optimized SQL Query
+# Using a JOIN to aggregate data for analysis
+query = """
+SELECT
+    s.ShipmentID,
+    s.RouteID,
+    c.Temperature,
+    i.Status
+FROM Shipments s
+JOIN ColdChainLogs c ON s.ShipmentID = c.ShipmentID
+JOIN Inventory_Status i ON s.ShipmentID = i.ShipmentID
+"""
+
+df = pd.read_sql_query(query, conn)
+conn.close()
+
+# 3. Data Processing for Professional Visualization
+# Calculating the mean temperature per shipment for a cleaner chart
+df_processed = df.groupby('ShipmentID')['Temperature'].mean().reset_index()
+
+# 4. Professional Visualization
+plt.figure(figsize=(10, 6))
+plt.bar(df_processed['ShipmentID'].astype(str), df_processed['Temperature'], color='#f39c12', edgecolor='black')
+
+# Adding a threshold line for regulatory compliance (Cold Chain Limit)
+plt.axhline(y=8, color='red', linestyle='--', linewidth=2, label='Critical Threshold (8°C)')
+
+# Formatting for a professional look
+plt.title('Average Temperature per Shipment', fontsize=14, fontweight='bold')
+plt.xlabel('Shipment ID', fontsize=12)
+plt.ylabel('Temperature (°C)', fontsize=12)
+plt.legend()
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+# Display the plot
+plt.tight_layout()
+plt.show()
+
+# 5. Summary Statistics for Report
+print("--- Logistics Cold Chain Summary ---")
+print(df_processed)
+
+
+
+
+ --- Logistics Cold Chain Summary ---
+   ShipmentID  Temperature
+0           1         5.65
+1           2        10.15
+2           3         4.75
+3           4         7.25
+
+
+### Riskli Durumdaki Sevkiyatlar İçin 'RouteID' Bazında Detaylı Analiz
+
+'Riskli' durumdaki sevkiyatları filtreleyip, 'RouteID' bazında ortalama sıcaklık ve bu statüdeki sevkiyat sayısını inceleyelim.
+
+
+
+# 'Riskli' statüsüne sahip sevkiyatları filtrele
+df_risky = df[df['Status'] == 'Riskli']
+
+# 'RouteID' bazında analiz yap
+# Ortalama sıcaklık ve 'Riskli' sevkiyat sayısını hesapla
+risk_analysis_by_route = df_risky.groupby('RouteID').agg(
+    mean_temperature=('Temperature', 'mean'),
+    risky_shipment_count=('ShipmentID', 'count')
+).reset_index()
+
+display(risk_analysis_by_route)
+
+
+
+
+
