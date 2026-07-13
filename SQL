@@ -1,0 +1,16 @@
+-- Tabloları oluştur
+CREATE TABLE Shipments (ShipmentID INTEGER PRIMARY KEY, MedicineID TEXT, RouteID TEXT, DepartureDate DATE);
+CREATE TABLE ColdChainLogs (LogID INTEGER PRIMARY KEY, ShipmentID INTEGER, Temperature REAL, Timestamp TEXT);
+CREATE TABLE Inventory_Status (ShipmentID INTEGER PRIMARY KEY, Status TEXT);
+
+-- Verileri ekle
+INSERT INTO Shipments VALUES (101, 'MED_01', 'R_001', '2026-07-01'), (102, 'MED_02', 'R_002', '2026-07-02'), (103, 'MED_03', 'R_001', '2026-07-03');
+INSERT INTO ColdChainLogs VALUES (1, 101, 4, '10:00'), (2, 102, 9, '11:00'), (3, 103, 5, '12:00');
+INSERT INTO Inventory_Status VALUES (101, 'Delivered'), (102, 'Returned for Disposal'), (103, 'Delivered');
+
+-- Analiz sorgusunu çalıştır
+SELECT s.ShipmentID, s.MedicineID, c.Temperature, i.Status
+FROM Shipments s
+JOIN ColdChainLogs c ON s.ShipmentID = c.ShipmentID
+JOIN Inventory_Status i ON s.ShipmentID = i.ShipmentID
+WHERE c.Temperature > 8;
